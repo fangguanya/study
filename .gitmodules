@@ -1,0 +1,3 @@
+[submodule "Path Find/Detour Recast"]
+	path = Path Find/Detour Recast
+	url = https://github.com/memononen/recastnavigation
