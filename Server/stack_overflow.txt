@@ -1,0 +1,39 @@
+# stack_overflow.txt: 
+#		简化版stack overflow，发现的一些技术问题、todo list、重构建议都记录在这里吧。
+# 	规则：1.以Stack方式增长，后录入的问题在前面添加
+#					2.格式：<序号>:[状态open/closed][日期YYYY/MM/DD]
+#									[用户名 (action example:create/found/suggest/fixed)]：(问题描述，解决建议或解决方案)
+<7>:[open][2014/2/25]
+[sunxin found]:使用akka进行服务器间通讯，通讯超时情况下，服务器可能会崩溃，error为EXCEPTION_ACCESS_VIOLATION，
+  引发问题的函数为akka.util.internal.HashedWheelTimer$Worker.fetchExpiredTimeouts
+[sunxin suggest]:尚未找到问题的原因
+
+<6>:[open][2014/1/17]
+[sunxin found]: 每日成就系统可以无限领奖。每日成就领奖时，如果玩家当前可领取高等级奖励，而客户端发送领低等级奖励消息
+  服务器检查是否可领高级奖，但标记低级奖已领取。玩家可一直发送领低级奖消息无限刷钻石。
+[sunxin suggest]:这个系统必须重构！
+
+<5>:[open][2014/1/8]
+[sunxin found]: ChatServer的许多全局共享变量不是线程安全的，但可能被多线程操作。比如举报禁言，系统公告。
+[sunxin suggest]:尽可能使用线程安全的集合类，规避多线程安全隐患
+
+<4>:[open][2014/1/8]
+[sunxin found]: DBS的数据更新时间间隔远小于GameServer的变更属性标记队列索引的刷新时间间隔，
+  这会导致DBS和GameServer同时操作同一块缓存。
+[sunxin suggest]:上线前注意修改这个常量值  
+
+<3>:[open][2014/1/7]
+[sunxin found]: DBS的SingleCommonCacheQueue线程，每次进行数据保存时，是从全局变更属性标记队列中取前5000条数据，
+  然后切换到另一块全局变更属性标记队列进行数据保存。如果队列中数据大于5000条，那么多出来的数据只能等到再次切换回来时
+  才能更新，这种情况会导致回档。
+[sunxin suggest]:可以借鉴SingleCacheQueue的方式进行数据保存。  
+
+<2>:[open][2014/1/7]
+[sunxin found]: 变更属性标记是以当前时间为序，插入到队列中。但是游戏服务器使用的当前时间是缓存时间，每100毫秒刷新一次，
+  因此插入队列后的顺序有可能错乱，严重时可能导致回档现象。
+[sunxin suggest]: 可以定义一个全局的AtomicLong计数器，以计数为序插入队列  
+
+<1>:[open][2013/12/31]
+[lixiaodong found]: 游戏服务器在解析客户端消息时，没有进行粘包处理，如果客户端数据过大，会解析出错
+[sunxin suggest]: 使用while循环反复读取网络流，直到读取长度等于消息的实际长度，注意限制循环上限，防止浪费线程资源。
+[lixiaodong fixed]:修改完毕

@@ -1,0 +1,64 @@
+【1、Mysql安装配置】
+yum install mysql-server.x86_64 -y
+
+修改/etc/my.cnf
+
+service mysqld start
+service iptables stop
+
+● grant all on *.* to root@'%' identified by 'root@mysql';
+● set password for root@'%'=old_password('root@mysql');
+● grant all on *.* to root@localhost identified by 'root@mysql';
+● set password for root@localhost=old_password('root@mysql');
+● flush privileges;
+
+上传qa_db_init.sql到/data/sql
+mysql < qa_db_init.sql
+
+【2、Redis安装配置】
+下载redis-2.6.14.tar.gz，上传到/data/software/
+
+tar xzvf redis-2.6.14.tar.gz
+yum install gcc.x86_64 -y
+cd redis-2.6.14 & make & make install
+
+redis-server &
+
+【3、Jdk1.6安装配置】
+下载jdk-6u45-linux-x64-rpm.bin，上传到/data/software/
+chmod 755 ./jdk-6u45-linux-x64-rpm.bin
+./jdk-6u45-linux-x64-rpm.bin
+
+修改~/.bash_profile
+# PATH=$PATH:$HOME/bin:/usr/java/jdk1.6.0_45/bin
+# JAVA_HOME=/usr/java/jdk1.6.0_45/
+# export JAVA_HOME
+# JRE_HOME=$JAVA_HOME/jre
+# export JRE_HOME
+# CLASSPATH=.:$JAVA_HOME/jre/lib/
+# export CLASSPATH
+source ~/.bash_profile
+
+【4、游戏服务器安装配置】
+a）上传coc_game_service_*.zip到/data/
+   上传log_start.sh和mysql-connector-java-5.1.26-bin.jar到/data/lib/
+b）编写部署脚本deploy.sh
+   编写停服脚本shutdown.sh
+   编写启服脚本startup.sh
+c）sh deploy.sh
+d）访问http://192.168.2.8:8080/init.jsp，创建测试账号
+
+【5、Nginx安装配置】
+下载nginx-1.4.3.tar.gz，上传到/data/software/
+
+tar xzvf nginx-1.4.3.tar.gz
+yum install pcre* -y
+yum install zlib* -y
+
+cd nginx-1.4.3 & ./configure & make & make install
+
+修改/usr/local/nginx/conf/nginx.conf
+上传maintenance.html到/usr/local/nginx/html/
+执行/usr/local/nginx/sbin/nginx 
+
+访问http://192.168.2.8,测试能否访问
