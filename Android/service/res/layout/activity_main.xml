@@ -1,0 +1,69 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:paddingBottom="@dimen/activity_vertical_margin"
+    android:paddingLeft="@dimen/activity_horizontal_margin"
+    android:paddingRight="@dimen/activity_horizontal_margin"
+    android:paddingTop="@dimen/activity_vertical_margin"
+    tools:context=".MainActivity" >
+
+    <TextView
+        android:id="@+id/textView1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/hello_world" />
+
+    <Button
+        android:id="@+id/btnbind"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/btnstart"
+        android:layout_below="@+id/btnstart"
+        android:layout_marginTop="23dp"
+        android:text="bind服务" />
+
+    <Button
+        android:id="@+id/btnforground"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/btnbind"
+        android:layout_below="@+id/btnbind"
+        android:layout_marginTop="29dp"
+        android:text="forground" />
+
+    <Button
+        android:id="@+id/btnunforground"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBottom="@+id/btnforground"
+        android:layout_alignLeft="@+id/btnunbind"
+        android:text="unforground" />
+
+    <Button
+        android:id="@+id/btnstop"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBaseline="@+id/btnstart"
+        android:layout_alignBottom="@+id/btnstart"
+        android:layout_marginLeft="40dp"
+        android:layout_toRightOf="@+id/btnstart"
+        android:text="stop服务" />
+
+    <Button
+        android:id="@+id/btnunbind"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/btnforground"
+        android:layout_alignLeft="@+id/btnstop"
+        android:text="unbind服务" />
+
+    <Button
+        android:id="@+id/btnstart"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/textView1"
+        android:layout_below="@+id/textView1"
+        android:text="start服务" />
+
+</RelativeLayout>
