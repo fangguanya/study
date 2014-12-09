@@ -25,6 +25,9 @@
         <service android:name="FLocalService" android:exported="false"></service>
         
         <service android:name="FForegroundService" android:exported="false"></service>
+        <service android:process=":remote" android:name="FRemoteService">
+            <intent-filter android:label="com.fanggang.service.FRemoteService"></intent-filter>
+        </service>
     </application>
 
 </manifest>
