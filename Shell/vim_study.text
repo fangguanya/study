@@ -1,0 +1,37 @@
+(map (+) ("foo"))
+--   vi"
+--va"
+--vi)
+--va)
+--v2i)
+--v2a)
+
+^ <Ctrl-q> <Ctrl-d> I-- [ESC]
+
+-Lovecraft
+-LyX
+-LateX
+-XeLaTex
+
+Now I'll type: XeLaTex, Lovecraft
+
+- asdfasdf
+- 1
+- ////
+- qaYp <Ctrl-a> q
+-   qa开始录制
+-   Yp复制行
+-   <Ctrl-a>增加1
+-   q停止录制
+
+ddddddddddddddddddddddddddddddd
+ddddddddddddddddddddddddddddddd
+ddddddddddddddddddddddddddddddd
+ddddddddddddddddddddddddddddddd
+ddddddddddddddddddddddddddddddd
+
+
+ddddddddddddddddddddddddddddddd
+CBddddddddddddddddddddddddddddAddd
+BddddddddddddddddddddddddddddAddd
+Bd123ddddddddddddddddddddddddAdddddd
