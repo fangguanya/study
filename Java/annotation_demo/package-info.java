@@ -1,2 +1,1 @@
-@FAnnotationTPackage
-package com.fanggang.annotation;
+@TestAPackage package com.fanggang.annotation;
