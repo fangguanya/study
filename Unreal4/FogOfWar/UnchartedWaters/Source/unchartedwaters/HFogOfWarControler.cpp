@@ -3,8 +3,8 @@
 #include "unchartedwaters.h"
 #include "HFogOfWarControler.h"
 
-const int8 FOG_VALUE = 255;
-const int8 PASS_VALUE = 100;
+const uint8 FOG_VALUE = 255;
+const uint8 PASS_VALUE = 100;
 
 // Sets default values
 AHFogOfWarControler::AHFogOfWarControler()
@@ -21,8 +21,13 @@ void AHFogOfWarControler::BeginPlay()
 	Super::BeginPlay();
 
 	LoadWorldSettings();
-	InitTextureResource();
 	SyncTextureContents();
+}
+
+void AHFogOfWarControler::PostLoad()
+{
+	Super::PostLoad();
+	InitTextureResource();
 }
 
 void AHFogOfWarControler::LoadWorldSettings()

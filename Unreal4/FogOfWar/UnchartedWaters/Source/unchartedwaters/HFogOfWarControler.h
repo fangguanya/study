@@ -14,7 +14,7 @@ public:
 	AHFogOfWarControler();
 
 	virtual void BeginPlay() override;
-	
+	virtual void PostLoad() override;
 	virtual void Tick( float DeltaSeconds ) override;
 
 	UFUNCTION(BlueprintCallable, Category = "FOW")
@@ -66,8 +66,8 @@ protected:
 	UPROPERTY()
 		TArray<uint8> LastDynamicTexturePixels;
 
-	UPROPERTY(VisibleAnywhere, Category = "FOW")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FOW")
 		UTexture2D* DynamicTexture;
-	UPROPERTY(VisibleAnywhere, Category = "FOW")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FOW")
 		UTexture2D* LastDynamicTexture;
 };
