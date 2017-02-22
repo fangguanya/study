@@ -43,7 +43,7 @@ protected:
 	UPROPERTY(VisibleAnywhere, Category = "FOW")
 		TArray<AActor*> Actors;
 	// Should sync to global-material-parameter-collections.
-	UPROPERTY(VisibleAnywhere, Category = "FOW")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FOW")
 		FBox WorldBounds;
 	UPROPERTY(EditAnywhere, Category = "FOW")
 		FVector WorldMin;

@@ -20,14 +20,15 @@ void AHFogOfWarControler::BeginPlay()
 {
 	Super::BeginPlay();
 
-	LoadWorldSettings();
 	SyncTextureContents();
 }
 
 void AHFogOfWarControler::PostLoad()
 {
 	Super::PostLoad();
+
 	InitTextureResource();
+	LoadWorldSettings();
 }
 
 void AHFogOfWarControler::LoadWorldSettings()
