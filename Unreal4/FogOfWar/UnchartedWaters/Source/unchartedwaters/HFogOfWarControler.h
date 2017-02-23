@@ -18,6 +18,7 @@ public:
 	~AHFogOfWarControler();
 
 	virtual void BeginPlay() override;
+	virtual void BeginDestroy() override;
 	virtual void PostLoad() override;
 	virtual void Tick( float DeltaSeconds ) override;
 
@@ -72,7 +73,7 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "FOW")
 		float BlendDuration;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FOW")
-		float BlendStartTime;
+		float BlendAlpha;
 	
 	// Format : G8 (ª“∂»Õº)
 	UPROPERTY()
@@ -86,6 +87,7 @@ protected:
 		UTexture2D* LastDynamicTexture;
 	
 protected:
+	float BlendStartTime;
 	float TexelPerWorldUnit;
 	float WorldUnitPerTexel;
 	AHFogOfWarThread* Worker;

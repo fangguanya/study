@@ -29,6 +29,18 @@ AHFogOfWarControler::~AHFogOfWarControler()
 	Worker = nullptr;
 }
 
+void AHFogOfWarControler::BeginDestroy()
+{
+	Super::BeginDestroy();
+
+	if (Worker)
+	{
+		Worker->Shutdown();
+		delete Worker;
+	}
+	Worker = nullptr;
+}
+
 // Called when the game starts or when spawned
 void AHFogOfWarControler::BeginPlay()
 {
@@ -109,7 +121,7 @@ void AHFogOfWarControler::LoadWorldSettings()
 void AHFogOfWarControler::ResetTextureResource()
 {
 	DynamicTexturePixels.Init(FOG_VALUE, TextureSize * TextureSize);
-	LastDynamicTexturePixels.Init(FOG_VALUE, TextureSize * TextureSize);	
+	LastDynamicTexturePixels.Init(FOG_VALUE, TextureSize * TextureSize);
 }
 
 void AHFogOfWarControler::InitTextureResource()
@@ -138,13 +150,13 @@ void AHFogOfWarControler::Tick( float DeltaTime )
 	Super::Tick( DeltaTime );
 
 	// !< 多线程的模块
+	float CurrentTime = GetWorld()->TimeSeconds;
 	if (Worker->IsCalculateFinished())
 	{
 		UE_LOG(LogFOWController, Log, TEXT("FOW Texture update use %.4f seconds"), Worker->LastCalculationTime);
 		LastDynamicTexturePixels = TArray<uint8>(DynamicTexturePixels);
-		BlendStartTime = GetWorld()->TimeSeconds;
-
 		DynamicTexturePixels = TArray<uint8>(Worker->GetFinalPixels());
+		BlendStartTime = CurrentTime;
 
 		for (AActor* Actor : Actors)
 		{
@@ -167,6 +179,8 @@ void AHFogOfWarControler::Tick( float DeltaTime )
 		Worker->ReCalculate();
 		SyncTextureContents();
 	}
+
+	BlendAlpha = FMath::Clamp<float>((CurrentTime - BlendStartTime) / BlendDuration, 0, 1);
 }
 
 void AHFogOfWarControler::RegisterActor(AActor* Actor)
@@ -200,93 +214,61 @@ bool AHFogOfWarControler::IsPositionVisible(const FVector& pos)
 void AHFogOfWarControler::SyncTextureContents()
 {
 	static FUpdateTextureRegion2D WholeTextureRegion(0, 0, 0, 0, TextureSize, TextureSize);
-	if (DynamicTexture->Resource)
+	struct FUpdateTextureSlotData
 	{
-		struct FUpdateTextureRegionData
-		{
-			FTexture2DResource* Texture2DResource;
-			int32 MipIndex;
-			uint32 NumRegions;
-			FUpdateTextureRegion2D* Regions;
-			uint32 SrcPitch;
-			uint32 SrcBpp;
-			uint8* SrcData;
-		};
-		FUpdateTextureRegionData* RegionData = new FUpdateTextureRegionData;
-		RegionData->Texture2DResource = (FTexture2DResource*)DynamicTexture->Resource;
-		RegionData->MipIndex = 0;
-		RegionData->NumRegions = 1;
-		RegionData->Regions = &WholeTextureRegion;
-		RegionData->SrcPitch = TextureSize;
-		RegionData->SrcBpp = 1;
-		RegionData->SrcData = DynamicTexturePixels.GetData();
-
-		ENQUEUE_UNIQUE_RENDER_COMMAND_ONEPARAMETER(
-			SyncTextureContents,
-			FUpdateTextureRegionData*, RegionData, RegionData,
-			{
-				for (uint32 RegionIndex = 0; RegionIndex < RegionData->NumRegions; ++RegionIndex)
-				{
-					int32 CurrentFirstMip = RegionData->Texture2DResource->GetCurrentFirstMip();
-					if (RegionData->MipIndex >= CurrentFirstMip)
-					{
-						RHIUpdateTexture2D(
-							RegionData->Texture2DResource->GetTexture2DRHI(),
-							RegionData->MipIndex - CurrentFirstMip,
-							RegionData->Regions[RegionIndex],
-							RegionData->SrcPitch,
-							RegionData->SrcData
-							+ RegionData->Regions[RegionIndex].SrcY * RegionData->SrcPitch
-							+ RegionData->Regions[RegionIndex].SrcX * RegionData->SrcBpp);
-					}
-				}
-				delete RegionData;
-			}
-		);
-	}
-
-	if (LastDynamicTexture->Resource)
+		FTexture2DResource* Texture2DResource;
+		int32 MipIndex;
+		FUpdateTextureRegion2D* Region;
+		uint32 SrcPitch;
+		uint32 SrcBpp;
+		uint8* SrcData;
+	};
+	struct FUpdateTextureRegionData
 	{
-		struct FUpdateTextureRegionData
-		{
-			FTexture2DResource* Texture2DResource;
-			int32 MipIndex;
-			uint32 NumRegions;
-			FUpdateTextureRegion2D* Regions;
-			uint32 SrcPitch;
-			uint32 SrcBpp;
-			uint8* SrcData;
-		};
-		FUpdateTextureRegionData* RegionData = new FUpdateTextureRegionData;
-		RegionData->Texture2DResource = (FTexture2DResource*)LastDynamicTexture->Resource;
-		RegionData->MipIndex = 0;
-		RegionData->NumRegions = 1;
-		RegionData->Regions = &WholeTextureRegion;
-		RegionData->SrcPitch = TextureSize;
-		RegionData->SrcBpp = 1;
-		RegionData->SrcData = LastDynamicTexturePixels.GetData();
+		TArray<FUpdateTextureSlotData> Slots;
+		AHFogOfWarControler *Controller;
+	};
+	FUpdateTextureRegionData* RegionData = new FUpdateTextureRegionData;
+	FUpdateTextureSlotData Slot;
+	Slot.Texture2DResource = (FTexture2DResource*)DynamicTexture->Resource;
+	Slot.MipIndex = 0;
+	Slot.Region = &WholeTextureRegion;
+	Slot.SrcPitch = TextureSize;
+	Slot.SrcBpp = 1;
+	Slot.SrcData = DynamicTexturePixels.GetData();
+	RegionData->Slots.Emplace(Slot);
 
-		ENQUEUE_UNIQUE_RENDER_COMMAND_ONEPARAMETER(
-			SyncTextureContents,
-			FUpdateTextureRegionData*, RegionData, RegionData,
+	FUpdateTextureSlotData Slot0;
+	Slot0.Texture2DResource = (FTexture2DResource*)LastDynamicTexture->Resource;
+	Slot0.MipIndex = 0;
+	Slot0.Region = &WholeTextureRegion;
+	Slot0.SrcPitch = TextureSize;
+	Slot0.SrcBpp = 1;
+	Slot0.SrcData = LastDynamicTexturePixels.GetData();
+	RegionData->Slots.Emplace(Slot0);
+
+	RegionData->Controller = this;
+
+	ENQUEUE_UNIQUE_RENDER_COMMAND_ONEPARAMETER(
+		SyncTextureContents,
+		FUpdateTextureRegionData*, RegionData, RegionData,
+		{
+			for (FUpdateTextureSlotData& Slot : RegionData->Slots)
 			{
-				for (uint32 RegionIndex = 0; RegionIndex < RegionData->NumRegions; ++RegionIndex)
+				int32 CurrentFirstMip = Slot.Texture2DResource->GetCurrentFirstMip();
+				if (Slot.MipIndex >= CurrentFirstMip)
 				{
-					int32 CurrentFirstMip = RegionData->Texture2DResource->GetCurrentFirstMip();
-					if (RegionData->MipIndex >= CurrentFirstMip)
-					{
-						RHIUpdateTexture2D(
-							RegionData->Texture2DResource->GetTexture2DRHI(),
-							RegionData->MipIndex - CurrentFirstMip,
-							RegionData->Regions[RegionIndex],
-							RegionData->SrcPitch,
-							RegionData->SrcData
-							+ RegionData->Regions[RegionIndex].SrcY * RegionData->SrcPitch
-							+ RegionData->Regions[RegionIndex].SrcX * RegionData->SrcBpp);
-					}
+					RHIUpdateTexture2D(
+						Slot.Texture2DResource->GetTexture2DRHI(),
+						Slot.MipIndex - CurrentFirstMip,
+						*Slot.Region,
+						Slot.SrcPitch,
+						Slot.SrcData
+						+ Slot.Region->SrcY * Slot.SrcPitch
+						+ Slot.Region->SrcX * Slot.SrcBpp);
 				}
-		delete RegionData;
 			}
-		);
-	}
+	delete RegionData;
+		}
+	);
 }

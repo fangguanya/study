@@ -57,7 +57,6 @@ public:
 
 	TArray<uint8>& GetFinalPixels() { return FinalPixels; }
 	float LastCalculationTime;
-	bool LastCalculationChanged;
 
 protected:
 	void UpdateFogTexture();

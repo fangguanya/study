@@ -14,7 +14,6 @@ AHFogOfWarThread::AHFogOfWarThread(UWorld* InWorld, bool InThreaded)
 	World(InWorld)
 {
 	LastCalculationTime = 0.f;
-	LastCalculationChanged = false;
 }
 AHFogOfWarThread::~AHFogOfWarThread()
 {
