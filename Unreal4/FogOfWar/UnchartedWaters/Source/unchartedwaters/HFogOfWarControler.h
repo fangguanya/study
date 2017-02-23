@@ -6,6 +6,8 @@
 #include "HFogOfWarThread.h"
 #include "HFogOfWarControler.generated.h"
 
+DECLARE_LOG_CATEGORY_EXTERN(LogFOWController, Log, Log);
+
 UCLASS(BlueprintType, Blueprintable)
 class UNCHARTEDWATERS_API AHFogOfWarControler : public AActor
 {
@@ -67,6 +69,10 @@ protected:
 		float ActorVisibleBlurDistance;
 	UPROPERTY(EditAnywhere, Category = "FOW")
 		int32 TextureSize;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "FOW")
+		float BlendDuration;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FOW")
+		float BlendStartTime;
 	
 	// Format : G8 (ª“∂»Õº)
 	UPROPERTY()
@@ -78,7 +84,7 @@ protected:
 		UTexture2D* DynamicTexture;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FOW")
 		UTexture2D* LastDynamicTexture;
-
+	
 protected:
 	float TexelPerWorldUnit;
 	float WorldUnitPerTexel;

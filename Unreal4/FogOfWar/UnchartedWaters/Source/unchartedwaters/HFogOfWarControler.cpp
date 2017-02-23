@@ -7,6 +7,8 @@ const uint8 VIEW_VALUE = 255;
 const uint8 FOG_VALUE = 0;
 const uint8 PASS_VALUE = 100;
 
+DEFINE_LOG_CATEGORY(LogFOWController);
+
 // Sets default values
 AHFogOfWarControler::AHFogOfWarControler()
 {
@@ -14,6 +16,7 @@ AHFogOfWarControler::AHFogOfWarControler()
 	PrimaryActorTick.bCanEverTick = true;
 	Worker = nullptr;
 	TextureSize = 512;
+	BlendDuration = 1.0f;
 }
 
 AHFogOfWarControler::~AHFogOfWarControler()
@@ -31,7 +34,7 @@ void AHFogOfWarControler::BeginPlay()
 {
 	Super::BeginPlay();
 
-	Worker = new AHFogOfWarThread(GetWorld());
+	Worker = new AHFogOfWarThread(GetWorld(), true);
 
 	FHFogOfWarParam Param;
 	Param.TexelBlurRadius = ActorVisibleBlurDistance * TexelPerWorldUnit;
@@ -134,9 +137,13 @@ void AHFogOfWarControler::Tick( float DeltaTime )
 {
 	Super::Tick( DeltaTime );
 
+	// !< 多线程的模块
 	if (Worker->IsCalculateFinished())
 	{
+		UE_LOG(LogFOWController, Log, TEXT("FOW Texture update use %.4f seconds"), Worker->LastCalculationTime);
 		LastDynamicTexturePixels = TArray<uint8>(DynamicTexturePixels);
+		BlendStartTime = GetWorld()->TimeSeconds;
+
 		DynamicTexturePixels = TArray<uint8>(Worker->GetFinalPixels());
 
 		for (AActor* Actor : Actors)

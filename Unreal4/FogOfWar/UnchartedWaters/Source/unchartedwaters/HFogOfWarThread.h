@@ -37,7 +37,7 @@ protected:
 	bool bUseThread;
 
 public:
-	AHFogOfWarThread(UWorld* InWorld);
+	AHFogOfWarThread(UWorld* InWorld, bool InThreaded);
 	virtual ~AHFogOfWarThread();
 
 	virtual bool Init();
@@ -54,11 +54,13 @@ public:
 	void SetTrackActorPosition(uint32 UniqueID, const FVector& Pos);
 	void RemovePlayerActor(uint32 UniqueID);
 	void RemoveTrackActor(uint32 UniqueID);
-	void UpdateFogTexture();
 
 	TArray<uint8>& GetFinalPixels() { return FinalPixels; }
+	float LastCalculationTime;
+	bool LastCalculationChanged;
 
 protected:
+	void UpdateFogTexture();
 	void UpdatePlayer(const FVector& Pos);
 	void UpdateTracker(FHFogOfWarTrackingActor& Tracker);
 	void UpdateFOVPosition(TArray<uint8>& pixels, const FVector& pos, FVector2D texel, const FVector& pos0, FVector2D texel0);

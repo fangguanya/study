@@ -7,12 +7,15 @@ const uint8 VIEW_VALUE = 255;
 const uint8 FOG_VALUE = 0;
 const uint8 PASS_VALUE = 100;
 
-AHFogOfWarThread::AHFogOfWarThread(UWorld* InWorld)
+AHFogOfWarThread::AHFogOfWarThread(UWorld* InWorld, bool InThreaded)
 	: Thread(nullptr),
 	bWorkFinished(false),
-	bUseThread(true),
+	bUseThread(InThreaded),
 	World(InWorld)
-{}
+{
+	LastCalculationTime = 0.f;
+	LastCalculationChanged = false;
+}
 AHFogOfWarThread::~AHFogOfWarThread()
 {
 	if (Thread)
@@ -31,6 +34,10 @@ void AHFogOfWarThread::Shutdown()
 }
 bool AHFogOfWarThread::IsCalculateFinished()
 {
+	if (!bUseThread)
+	{
+		UpdateFogTexture();
+	}
 	return bWorkFinished;
 }
 void AHFogOfWarThread::ReCalculate()
@@ -54,15 +61,11 @@ uint32 AHFogOfWarThread::Run()
 	{
 		return 0;
 	}
-	FPlatformProcess::Sleep(0.05f);
+	FPlatformProcess::Sleep(0.01f);
 	while (StopFlag.GetValue() == 0)
 	{
-		if (!bWorkFinished)
-		{
-			UpdateFogTexture();
-			bWorkFinished = true;
-		}
-		FPlatformProcess::Sleep(0.1f);
+		UpdateFogTexture();
+		FPlatformProcess::Sleep(0.01f);
 	}
 	return 0;
 }
@@ -123,18 +126,24 @@ void AHFogOfWarThread::RemoveTrackActor(uint32 UniqueID)
 
 void AHFogOfWarThread::UpdateFogTexture()
 {
-	PlayerActorsPixel.Init(FOG_VALUE, FOWParam.TextureSize * FOWParam.TextureSize);
-	for (auto Iter : PlayerActors)
+	if (!bWorkFinished)
 	{
-		FVector& Pos = Iter.Value;
-		UpdatePlayer(Pos);
+		float Start = World->TimeSeconds;
+		PlayerActorsPixel.Init(FOG_VALUE, FOWParam.TextureSize * FOWParam.TextureSize);
+		for (auto Iter : PlayerActors)
+		{
+			FVector& Pos = Iter.Value;
+			UpdatePlayer(Pos);
+		}
+		for (auto Iter : TrackActors)
+		{
+			FHFogOfWarTrackingActor& Tracker = Iter.Value;
+			UpdateTracker(Tracker);
+		}
+		Intergrate();
+		bWorkFinished = true;
+		LastCalculationTime = World->TimeSince(Start);
 	}
-	for (auto Iter : TrackActors)
-	{
-		FHFogOfWarTrackingActor& Tracker = Iter.Value;
-		UpdateTracker(Tracker);
-	}
-	Intergrate();
 }
 
 void AHFogOfWarThread::UpdatePlayer(const FVector& Pos)
@@ -291,7 +300,9 @@ void AHFogOfWarThread::UpdateFOVPosition(TArray<uint8>& pixels, const FVector& p
 }
 void AHFogOfWarThread::Intergrate()
 {
-	for (int x = 0;x < FOWParam.TextureSize; ++x)
+	//FinalPixels = TArray<uint8>(PlayerActorsPixel);
+
+	for (int x = 0; x < FOWParam.TextureSize; ++x)
 	{
 		for (int y = 0; y < FOWParam.TextureSize; ++y)
 		{
