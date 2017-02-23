@@ -3,6 +3,7 @@
 #pragma once
 
 #include "GameFramework/Actor.h"
+#include "HFogOfWarThread.h"
 #include "HFogOfWarControler.generated.h"
 
 UCLASS(BlueprintType, Blueprintable)
@@ -12,6 +13,7 @@ class UNCHARTEDWATERS_API AHFogOfWarControler : public AActor
 	
 public:	
 	AHFogOfWarControler();
+	~AHFogOfWarControler();
 
 	virtual void BeginPlay() override;
 	virtual void PostLoad() override;
@@ -19,11 +21,15 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "FOW")
 		void RegisterActor(AActor* Actor);
-	// Only do circle check.
+	UFUNCTION(BlueprintCallable, Category = "FOW")
+		void RegisterTracker(AActor* Actor);
+	UFUNCTION(BlueprintCallable, Category = "FOW")
+		void RemoveActor(AActor* Actor);
+	UFUNCTION(BlueprintCallable, Category = "FOW")
+		void RemoveTracker(AActor* Actor);
+
 	UFUNCTION(BlueprintCallable, Category = "FOW")
 		bool IsPositionVisible(const FVector& pos);
-		
-	void UpdatePlayerPosition(const FVector& pos);
 	
 public:
 	// !< 同步图形显存
@@ -36,12 +42,16 @@ public:
 	void ResetTextureResource();
 
 protected:
-	// Update interval
-	UPROPERTY(EditAnywhere, Category = "FOW")
-		float UpdateIntervalTime;
 	// All synced actors
 	UPROPERTY(VisibleAnywhere, Category = "FOW")
 		TArray<AActor*> Actors;
+	UPROPERTY(VisibleAnywhere, Category = "FOW")
+		TArray<AActor*> Trackers;
+	UPROPERTY(VisibleAnywhere, Category = "FOW")
+		TArray<uint32> RemovedActors;
+	UPROPERTY(VisibleAnywhere, Category = "FOW")
+		TArray<uint32> RemovedTrackers;
+
 	// Should sync to global-material-parameter-collections.
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FOW")
 		FBox WorldBounds;
@@ -52,15 +62,13 @@ protected:
 	// Actor view distances
 	UPROPERTY(EditAnywhere, Category = "FOW")
 		float ActorVisibleUnit;
+	// Actor view blur distance
+	UPROPERTY(EditAnywhere, Category = "FOW")
+		float ActorVisibleBlurDistance;
 	UPROPERTY(EditAnywhere, Category = "FOW")
 		int32 TextureSize;
-
-	float TexelPerWorldUnit;
-	float LastUpdateTime;
 	
 	// Format : G8 (灰度图)
-	UPROPERTY()
-		TArray<uint8> PassedDynamicTexturePixels;
 	UPROPERTY()
 		TArray<uint8> DynamicTexturePixels;
 	UPROPERTY()
@@ -70,4 +78,9 @@ protected:
 		UTexture2D* DynamicTexture;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FOW")
 		UTexture2D* LastDynamicTexture;
+
+protected:
+	float TexelPerWorldUnit;
+	float WorldUnitPerTexel;
+	AHFogOfWarThread* Worker;
 };

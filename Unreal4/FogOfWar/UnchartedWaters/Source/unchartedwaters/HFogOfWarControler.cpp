@@ -3,7 +3,8 @@
 #include "unchartedwaters.h"
 #include "HFogOfWarControler.h"
 
-const uint8 FOG_VALUE = 255;
+const uint8 VIEW_VALUE = 255;
+const uint8 FOG_VALUE = 0;
 const uint8 PASS_VALUE = 100;
 
 // Sets default values
@@ -11,14 +12,38 @@ AHFogOfWarControler::AHFogOfWarControler()
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
-
+	Worker = nullptr;
 	TextureSize = 512;
+}
+
+AHFogOfWarControler::~AHFogOfWarControler()
+{
+	if (Worker)
+	{
+		Worker->Shutdown();
+		delete Worker;
+	}
+	Worker = nullptr;
 }
 
 // Called when the game starts or when spawned
 void AHFogOfWarControler::BeginPlay()
 {
 	Super::BeginPlay();
+
+	Worker = new AHFogOfWarThread(GetWorld());
+
+	FHFogOfWarParam Param;
+	Param.TexelBlurRadius = ActorVisibleBlurDistance * TexelPerWorldUnit;
+	Param.TexelPerWorldUnit = TexelPerWorldUnit;
+	Param.TexelVisibleRadius = ActorVisibleUnit * TexelPerWorldUnit;
+	Param.TextureSize = TextureSize;
+	Param.WorldBlurRadius = ActorVisibleBlurDistance;
+	Param.WorldBounds = WorldBounds;
+	Param.WorldUnitPerTexel = WorldUnitPerTexel;
+	Param.WorldVisibleRadius = ActorVisibleUnit;
+	Worker->SetParam(Param);
+	Worker->Startup();
 
 	SyncTextureContents();
 }
@@ -73,16 +98,15 @@ void AHFogOfWarControler::LoadWorldSettings()
 
 	// !< WARN : 目前简单默认世界地图包围盒为正方形.
 	ensureMsgf(WorldBounds.GetExtent().X - WorldBounds.GetExtent().Y <= FLT_EPSILON, TEXT("World bounds must be SQUARE! current X=%.2f, Y=%.2f"), WorldBounds.GetExtent().X ,WorldBounds.GetExtent().Y);
+
 	TexelPerWorldUnit = (float)TextureSize / WorldBounds.GetSize().X;
-	LastUpdateTime = 0;
+	WorldUnitPerTexel = (float)WorldBounds.GetSize().X / TextureSize;
 }
 
 void AHFogOfWarControler::ResetTextureResource()
 {
-	PassedDynamicTexturePixels.Init(0, TextureSize * TextureSize);
-	DynamicTexturePixels.Init(0, TextureSize * TextureSize);
-	LastDynamicTexturePixels.Init(0, TextureSize * TextureSize);
-	LastUpdateTime = 0;
+	DynamicTexturePixels.Init(FOG_VALUE, TextureSize * TextureSize);
+	LastDynamicTexturePixels.Init(FOG_VALUE, TextureSize * TextureSize);	
 }
 
 void AHFogOfWarControler::InitTextureResource()
@@ -90,12 +114,16 @@ void AHFogOfWarControler::InitTextureResource()
 	DynamicTexture = UTexture2D::CreateTransient(TextureSize, TextureSize, PF_G8);
 	DynamicTexture->CompressionSettings = TextureCompressionSettings::TC_Grayscale;
 	DynamicTexture->SRGB = 0;
+#if WITH_EDITOR
 	DynamicTexture->MipGenSettings = TMGS_NoMipmaps;
+#endif
 	DynamicTexture->UpdateResource();
 	LastDynamicTexture = UTexture2D::CreateTransient(TextureSize, TextureSize, PF_G8);
 	LastDynamicTexture->CompressionSettings = TextureCompressionSettings::TC_Grayscale;
 	LastDynamicTexture->SRGB = 0;
+#if WITH_EDITOR
 	LastDynamicTexture->MipGenSettings = TMGS_NoMipmaps;
+#endif
 	LastDynamicTexture->UpdateResource();
 
 	ResetTextureResource();
@@ -106,24 +134,51 @@ void AHFogOfWarControler::Tick( float DeltaTime )
 {
 	Super::Tick( DeltaTime );
 
-	float CurrentTime = GetWorld()->GetTimeSeconds();
-	if (CurrentTime - LastUpdateTime >= UpdateIntervalTime)
+	if (Worker->IsCalculateFinished())
 	{
 		LastDynamicTexturePixels = TArray<uint8>(DynamicTexturePixels);
+		DynamicTexturePixels = TArray<uint8>(Worker->GetFinalPixels());
+
 		for (AActor* Actor : Actors)
 		{
-			UpdatePlayerPosition(Actor->GetActorLocation());
+			Worker->SetPlayerActorPosition(Actor->GetUniqueID(), Actor->GetActorLocation());
 		}
-
-		// !< TODO:根据贴图是否真正发生改变来更新显存
+		for (AActor* Actor : Trackers)
+		{
+			Worker->SetTrackActorPosition(Actor->GetUniqueID(), Actor->GetActorLocation());
+		}
+		for (uint32 id : RemovedActors)
+		{
+			Worker->RemovePlayerActor(id);
+		}
+		for (uint32 id : RemovedTrackers)
+		{
+			Worker->RemoveTrackActor(id);
+		}
+		RemovedActors.Empty();
+		RemovedTrackers.Empty();
+		Worker->ReCalculate();
 		SyncTextureContents();
-		LastUpdateTime = CurrentTime;
 	}
 }
 
 void AHFogOfWarControler::RegisterActor(AActor* Actor)
 {
 	Actors.AddUnique(Actor);
+}
+void AHFogOfWarControler::RegisterTracker(AActor* Actor)
+{
+	Trackers.AddUnique(Actor);
+}
+void AHFogOfWarControler::RemoveActor(AActor* Actor)
+{
+	RemovedActors.AddUnique(Actor->GetUniqueID());
+	Actors.Remove(Actor);
+}
+void AHFogOfWarControler::RemoveTracker(AActor* Actor)
+{
+	RemovedTrackers.AddUnique(Actor->GetUniqueID());
+	Trackers.Remove(Actor);
 }
 
 bool AHFogOfWarControler::IsPositionVisible(const FVector& pos)
@@ -132,49 +187,7 @@ bool AHFogOfWarControler::IsPositionVisible(const FVector& pos)
 	FVector2D texel = FVector2D(texel3D.X, texel3D.Y);
 	int x = FMath::Clamp<int>(texel.X, 0, TextureSize - 1);
 	int y = FMath::Clamp<int>(texel.Y, 0, TextureSize - 1);
-	return DynamicTexturePixels[y * TextureSize + x] == FOG_VALUE;
-}
-
-void AHFogOfWarControler::UpdatePlayerPosition(const FVector& pos)
-{
-	// !< WARN : 目前简单的根据左下角00, 右上角11来算
-	FVector texel3D = (pos - WorldBounds.Min) * TexelPerWorldUnit;
-	FVector2D texel = FVector2D(texel3D.X, texel3D.Y);
-
-	// !< 纹理空间的可视区域
-	float texelRadius = ActorVisibleUnit * TexelPerWorldUnit;
-
-	int minX = FMath::Clamp<int>(texel.X - texelRadius, 0, TextureSize - 1);
-	int minY = FMath::Clamp<int>(texel.Y - texelRadius, 0, TextureSize - 1);
-	int maxX = FMath::Clamp<int>(texel.X + texelRadius, 0, TextureSize - 1);
-	int maxY = FMath::Clamp<int>(texel.Y + texelRadius, 0, TextureSize - 1);
-
-	// !< PassedDynamicTexturePixels 记录已经走过(探过)的区域
-	for (int x = minX; x < maxX; ++x)
-	{
-		for (int y = minY; y < maxY; ++y)
-		{
-			float distance = FVector2D::Distance(texel, FVector2D(x, y));
-			if (distance < texelRadius)
-			{
-				PassedDynamicTexturePixels[y * TextureSize + x] = PASS_VALUE;
-			}
-		}
-	}
-	
-	// !< DynamicTexturePixels 包含自身当前所在区域的最终图
-	DynamicTexturePixels = TArray<uint8>(PassedDynamicTexturePixels);
-	for (int x = minX; x < maxX; ++x)
-	{
-		for (int y = minY; y < maxY; ++y)
-		{
-			float distance = FVector2D::Distance(texel, FVector2D(x, y));
-			if (distance < texelRadius)
-			{
-				DynamicTexturePixels[y * TextureSize + x] = FOG_VALUE;
-			}
-		}
-	}
+	return DynamicTexturePixels[y * TextureSize + x] != FOG_VALUE;
 }
 
 void AHFogOfWarControler::SyncTextureContents()
