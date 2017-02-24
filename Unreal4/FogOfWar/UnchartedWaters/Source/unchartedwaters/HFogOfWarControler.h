@@ -69,7 +69,11 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "FOW")
 		float ActorVisibleBlurDistance;
 	UPROPERTY(EditAnywhere, Category = "FOW")
-		int32 TextureSize;
+		float FOVBias;
+	UPROPERTY(EditAnywhere, Category = "FOW")
+		bool EnableBlur;
+	UPROPERTY(EditAnywhere, Category = "FOW")
+		int16 TextureSize;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "FOW")
 		float BlendDuration;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FOW")

@@ -9,7 +9,7 @@ const uint8 PASS_VALUE = 100;
 
 DEFINE_LOG_CATEGORY(LogFOWController);
 
-// Sets default values
+// Sets default values 
 AHFogOfWarControler::AHFogOfWarControler()
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
@@ -17,6 +17,7 @@ AHFogOfWarControler::AHFogOfWarControler()
 	Worker = nullptr;
 	TextureSize = 512;
 	BlendDuration = 1.0f;
+	FOVBias = 1.0f;
 }
 
 AHFogOfWarControler::~AHFogOfWarControler()
@@ -57,6 +58,8 @@ void AHFogOfWarControler::BeginPlay()
 	Param.WorldBounds = WorldBounds;
 	Param.WorldUnitPerTexel = WorldUnitPerTexel;
 	Param.WorldVisibleRadius = ActorVisibleUnit;
+	Param.FOVBias = FOVBias;
+	Param.EnableBlur = EnableBlur;
 	Worker->SetParam(Param);
 	Worker->Startup();
 

@@ -11,9 +11,11 @@ struct UNCHARTEDWATERS_API FHFogOfWarParam
 	float TexelVisibleRadius;
 	float WorldBlurRadius;
 	float TexelBlurRadius;
-	int32 TextureSize;
+	int16 TextureSize;
 	float TexelPerWorldUnit;
 	float WorldUnitPerTexel;
+	float FOVBias;
+	bool EnableBlur;
 };
 
 struct UNCHARTEDWATERS_API FHFogOfWarTrackingActor
@@ -65,6 +67,9 @@ protected:
 	void UpdateFOVPosition(TArray<uint8>& pixels, const FVector& pos, FVector2D texel, const FVector& pos0, FVector2D texel0);
 	void Intergrate();
 
+	// !< Blur
+	void AddPlayerActorBlurPixel(int16 x, int16 y);
+
 protected:
 	// !< 参数
 	FHFogOfWarParam FOWParam;
@@ -77,6 +82,10 @@ protected:
 	// !< 贴图数据(G8灰度图)
 	// !< 1. 所有'PlayerActors'的实时可见区域计算
 	TArray<uint8> PlayerActorsPixel;
-	// !< 3. 合并最终输出的贴图
+	// !< 2. 合并最终输出的贴图
 	TArray<uint8> FinalPixels;
+	// !< 待模糊数据
+	// !< 1. 所有'PlayerActors'的需要模糊的区域
+	TSet<int32> PlayerActorsBlurPoints;
+	TArray<uint8> PlayerActorsHorizontalBlurPixels;
 };
