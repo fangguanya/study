@@ -168,30 +168,14 @@ void AHFogOfWarThread::UpdatePlayer(const FVector& Pos)
 	FVector2D texel = FVector2D(texel3D.X, texel3D.Y);
 
 	// !< 纹理空间的可视区域
-	float texelRadius = FOWParam.TexelVisibleRadius;
-
-	float minXFlt = texel.X - texelRadius;
-	float minYFlt = texel.Y - texelRadius;
-	float maxXFlt = texel.X + texelRadius;
-	float maxYFlt = texel.Y + texelRadius;
+	float minXFlt = texel.X - FOWParam.TexelVisibleRadius;
+	float minYFlt = texel.Y - FOWParam.TexelVisibleRadius;
+	float maxXFlt = texel.X + FOWParam.TexelVisibleRadius;
+	float maxYFlt = texel.Y + FOWParam.TexelVisibleRadius;
 	int16 minX = FMath::Clamp<int16>(minXFlt, 0, FOWParam.TextureSize - 1);
 	int16 minY = FMath::Clamp<int16>(minYFlt, 0, FOWParam.TextureSize - 1);
 	int16 maxX = FMath::Clamp<int16>(maxXFlt, 0, FOWParam.TextureSize - 1);
 	int16 maxY = FMath::Clamp<int16>(maxYFlt, 0, FOWParam.TextureSize - 1);
-
-	// !< 包含自身当前所在区域的最终图
-	for (int16 x = minX; x < maxX; ++x)
-	{
-		for (int16 y = minY; y < maxY; ++y)
-		{
-			float distance = FVector2D::Distance(texel, FVector2D(x, y));
-			if (distance < texelRadius)
-			{
-				PlayerActorsPixel[y * FOWParam.TextureSize + x] = VIEW_VALUE;
-				AddPlayerActorBlurPixel(x, y);
-			}
-		}
-	}
 
 	// !< 进行碰撞检测
 	/*
@@ -283,9 +267,9 @@ void AHFogOfWarThread::UpdateFOVPosition(TArray<uint8>& pixels, const FVector& p
 		if (iterThroughX)
 		{
 			bool IsShadow = FMath::Abs(testPos.X) >= FMath::Abs(HitDeltaPosition.X);
-			if (IsShadow)
+			if (!IsShadow && FVector2D::Distance(texel, FVector2D(x, y)) <= FOWParam.TexelVisibleRadius)
 			{
-				pixels[y * FOWParam.TextureSize + x] = FOG_VALUE;
+				pixels[y * FOWParam.TextureSize + x] = VIEW_VALUE;
 				AddPlayerActorBlurPixel(x, y);
 			}
 
@@ -301,9 +285,9 @@ void AHFogOfWarThread::UpdateFOVPosition(TArray<uint8>& pixels, const FVector& p
 		else
 		{
 			bool IsShadow = FMath::Abs(testPos.Y) >= FMath::Abs(HitDeltaPosition.Y);
-			if (IsShadow)
+			if (!IsShadow && FVector2D::Distance(texel, FVector2D(x, y)) <= FOWParam.TexelVisibleRadius)
 			{
-				pixels[y * FOWParam.TextureSize + x] = FOG_VALUE;
+				pixels[y * FOWParam.TextureSize + x] = VIEW_VALUE;
 				AddPlayerActorBlurPixel(x, y);
 			}
 
@@ -357,20 +341,20 @@ void AHFogOfWarThread::Intergrate()
 	}
 	
 	// !< 2. 输出到最终贴图
-	//FinalPixels = TArray<uint8>(PlayerActorsPixel);
+	FinalPixels = TArray<uint8>(PlayerActorsPixel);
 
-	for (int x = 0; x < FOWParam.TextureSize; ++x)
-	{
-		for (int y = 0; y < FOWParam.TextureSize; ++y)
-		{
-			int32 Index = y * FOWParam.TextureSize + x;
-			int8 Value = PlayerActorsPixel[Index];
-			for (auto Iter : TrackActors)
-			{
-				FHFogOfWarTrackingActor& Tracker = Iter.Value;
-				Value = FMath::Clamp(Value + Tracker.PassedPixels[Index], 0, 255);
-			}
-			FinalPixels[Index] = Value;
-		}
-	}
+	//for (int x = 0; x < FOWParam.TextureSize; ++x)
+	//{
+	//	for (int y = 0; y < FOWParam.TextureSize; ++y)
+	//	{
+	//		int32 Index = y * FOWParam.TextureSize + x;
+	//		int8 Value = PlayerActorsPixel[Index];
+	//		for (auto Iter : TrackActors)
+	//		{
+	//			FHFogOfWarTrackingActor& Tracker = Iter.Value;
+	//			Value = FMath::Clamp(Value + Tracker.PassedPixels[Index], 0, 255);
+	//		}
+	//		FinalPixels[Index] = Value;
+	//	}
+	//}
 }

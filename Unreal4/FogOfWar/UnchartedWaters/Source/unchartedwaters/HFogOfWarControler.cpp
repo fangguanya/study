@@ -18,6 +18,7 @@ AHFogOfWarControler::AHFogOfWarControler()
 	TextureSize = 512;
 	BlendDuration = 1.0f;
 	FOVBias = 1.0f;
+	WholeTextureRegion = new FUpdateTextureRegion2D(0, 0, 0, 0, TextureSize, TextureSize);
 }
 
 AHFogOfWarControler::~AHFogOfWarControler()
@@ -26,14 +27,20 @@ AHFogOfWarControler::~AHFogOfWarControler()
 	{
 		Worker->Shutdown();
 		delete Worker;
+		Worker = nullptr;
 	}
-	Worker = nullptr;
+	if (WholeTextureRegion)
+	{
+		delete WholeTextureRegion;
+		WholeTextureRegion = nullptr;
+	}
 }
 
 void AHFogOfWarControler::BeginDestroy()
 {
 	Super::BeginDestroy();
 
+	ResetTextureResource();
 	if (Worker)
 	{
 		Worker->Shutdown();
@@ -45,10 +52,15 @@ void AHFogOfWarControler::BeginDestroy()
 // Called when the game starts or when spawned
 void AHFogOfWarControler::BeginPlay()
 {
+	InitTextureResource(); 
+	LoadWorldSettings();
+
 	Super::BeginPlay();
 
 	Worker = new AHFogOfWarThread(GetWorld(), true);
 
+	WholeTextureRegion->Width = TextureSize;
+	WholeTextureRegion->Height = TextureSize;
 	FHFogOfWarParam Param;
 	Param.TexelBlurRadius = ActorVisibleBlurDistance * TexelPerWorldUnit;
 	Param.TexelPerWorldUnit = TexelPerWorldUnit;
@@ -61,17 +73,12 @@ void AHFogOfWarControler::BeginPlay()
 	Param.FOVBias = FOVBias;
 	Param.EnableBlur = EnableBlur;
 	Worker->SetParam(Param);
-	Worker->Startup();
-
-	SyncTextureContents();
+	Worker->Startup(); 
 }
 
 void AHFogOfWarControler::PostLoad()
 {
 	Super::PostLoad();
-
-	InitTextureResource();
-	LoadWorldSettings();
 }
 
 void AHFogOfWarControler::LoadWorldSettings()
@@ -79,6 +86,10 @@ void AHFogOfWarControler::LoadWorldSettings()
 	WorldBounds.Init();
 
 	// !< Ver 2
+	FVector WorldMinConfig = WorldMinActor->GetActorLocation();
+	FVector WorldMaxConfig = WorldMaxActor->GetActorLocation();
+	FVector WorldMin(FMath::Min(WorldMinConfig.X, WorldMaxConfig.X), FMath::Min(WorldMinConfig.Y, WorldMaxConfig.Y), 0);
+	FVector WorldMax(FMath::Max(WorldMinConfig.X, WorldMaxConfig.X), FMath::Max(WorldMinConfig.Y, WorldMaxConfig.Y), 0);
 	FVector TempMax = WorldMax;
 	FVector TempDist = WorldMax - WorldMin;
 	TempDist.X = FMath::Max(TempDist.X, TempDist.Y);
@@ -123,28 +134,43 @@ void AHFogOfWarControler::LoadWorldSettings()
 
 void AHFogOfWarControler::ResetTextureResource()
 {
-	DynamicTexturePixels.Init(FOG_VALUE, TextureSize * TextureSize);
-	LastDynamicTexturePixels.Init(FOG_VALUE, TextureSize * TextureSize);
+	if (DynamicTexture)
+	{
+		DynamicTexture->ReleaseResource();
+		DynamicTexture = nullptr;
+	}
+	if (LastDynamicTexture)
+	{
+		LastDynamicTexture->ReleaseResource();
+		LastDynamicTexture = nullptr;
+	}
 }
 
 void AHFogOfWarControler::InitTextureResource()
 {
-	DynamicTexture = UTexture2D::CreateTransient(TextureSize, TextureSize, PF_G8);
-	DynamicTexture->CompressionSettings = TextureCompressionSettings::TC_Grayscale;
-	DynamicTexture->SRGB = 0;
+	if (!DynamicTexture)
+	{
+		DynamicTexture = UTexture2D::CreateTransient(TextureSize, TextureSize, PF_G8);
+		DynamicTexture->CompressionSettings = TextureCompressionSettings::TC_Grayscale;
+		DynamicTexture->SRGB = 0;
 #if WITH_EDITOR
-	DynamicTexture->MipGenSettings = TMGS_NoMipmaps;
+		DynamicTexture->MipGenSettings = TMGS_NoMipmaps;
 #endif
-	DynamicTexture->UpdateResource();
-	LastDynamicTexture = UTexture2D::CreateTransient(TextureSize, TextureSize, PF_G8);
-	LastDynamicTexture->CompressionSettings = TextureCompressionSettings::TC_Grayscale;
-	LastDynamicTexture->SRGB = 0;
+		DynamicTexture->UpdateResource();
+	}
+	if (!LastDynamicTexture)
+	{
+		LastDynamicTexture = UTexture2D::CreateTransient(TextureSize, TextureSize, PF_G8);
+		LastDynamicTexture->CompressionSettings = TextureCompressionSettings::TC_Grayscale;
+		LastDynamicTexture->SRGB = 0;
 #if WITH_EDITOR
-	LastDynamicTexture->MipGenSettings = TMGS_NoMipmaps;
+		LastDynamicTexture->MipGenSettings = TMGS_NoMipmaps;
 #endif
-	LastDynamicTexture->UpdateResource();
+		LastDynamicTexture->UpdateResource();
+	}
 
-	ResetTextureResource();
+	DynamicTexturePixels.Init(FOG_VALUE, TextureSize * TextureSize);
+	LastDynamicTexturePixels.Init(FOG_VALUE, TextureSize * TextureSize);
 }
 
 // Called every frame
@@ -216,7 +242,6 @@ bool AHFogOfWarControler::IsPositionVisible(const FVector& pos)
 
 void AHFogOfWarControler::SyncTextureContents()
 {
-	static FUpdateTextureRegion2D WholeTextureRegion(0, 0, 0, 0, TextureSize, TextureSize);
 	struct FUpdateTextureSlotData
 	{
 		FTexture2DResource* Texture2DResource;
@@ -231,47 +256,51 @@ void AHFogOfWarControler::SyncTextureContents()
 		TArray<FUpdateTextureSlotData> Slots;
 		AHFogOfWarControler *Controller;
 	};
-	FUpdateTextureRegionData* RegionData = new FUpdateTextureRegionData;
-	FUpdateTextureSlotData Slot;
-	Slot.Texture2DResource = (FTexture2DResource*)DynamicTexture->Resource;
-	Slot.MipIndex = 0;
-	Slot.Region = &WholeTextureRegion;
-	Slot.SrcPitch = TextureSize;
-	Slot.SrcBpp = 1;
-	Slot.SrcData = DynamicTexturePixels.GetData();
-	RegionData->Slots.Emplace(Slot);
 
-	FUpdateTextureSlotData Slot0;
-	Slot0.Texture2DResource = (FTexture2DResource*)LastDynamicTexture->Resource;
-	Slot0.MipIndex = 0;
-	Slot0.Region = &WholeTextureRegion;
-	Slot0.SrcPitch = TextureSize;
-	Slot0.SrcBpp = 1;
-	Slot0.SrcData = LastDynamicTexturePixels.GetData();
-	RegionData->Slots.Emplace(Slot0);
+	if (DynamicTexture && LastDynamicTexture && DynamicTexture->Resource && LastDynamicTexture->Resource)
+	{
+		FUpdateTextureRegionData* RegionData = new FUpdateTextureRegionData;
+		FUpdateTextureSlotData Slot;
+		Slot.Texture2DResource = (FTexture2DResource*)DynamicTexture->Resource;
+		Slot.MipIndex = 0;
+		Slot.Region = WholeTextureRegion;
+		Slot.SrcPitch = TextureSize;
+		Slot.SrcBpp = 1;
+		Slot.SrcData = DynamicTexturePixels.GetData();
+		RegionData->Slots.Emplace(Slot);
 
-	RegionData->Controller = this;
+		FUpdateTextureSlotData Slot0;
+		Slot0.Texture2DResource = (FTexture2DResource*)LastDynamicTexture->Resource;
+		Slot0.MipIndex = 0;
+		Slot0.Region = WholeTextureRegion;
+		Slot0.SrcPitch = TextureSize;
+		Slot0.SrcBpp = 1;
+		Slot0.SrcData = LastDynamicTexturePixels.GetData();
+		RegionData->Slots.Emplace(Slot0);
 
-	ENQUEUE_UNIQUE_RENDER_COMMAND_ONEPARAMETER(
-		SyncTextureContents,
-		FUpdateTextureRegionData*, RegionData, RegionData,
-		{
-			for (FUpdateTextureSlotData& Slot : RegionData->Slots)
+		RegionData->Controller = this;
+		
+		ENQUEUE_UNIQUE_RENDER_COMMAND_ONEPARAMETER(
+			SyncTextureContents,
+			FUpdateTextureRegionData*, RegionData, RegionData,
 			{
-				int32 CurrentFirstMip = Slot.Texture2DResource->GetCurrentFirstMip();
-				if (Slot.MipIndex >= CurrentFirstMip)
+				for (FUpdateTextureSlotData& Slot : RegionData->Slots)
 				{
-					RHIUpdateTexture2D(
-						Slot.Texture2DResource->GetTexture2DRHI(),
-						Slot.MipIndex - CurrentFirstMip,
-						*Slot.Region,
-						Slot.SrcPitch,
-						Slot.SrcData
-						+ Slot.Region->SrcY * Slot.SrcPitch
-						+ Slot.Region->SrcX * Slot.SrcBpp);
+					int32 CurrentFirstMip = Slot.Texture2DResource->GetCurrentFirstMip();
+					if (Slot.MipIndex >= CurrentFirstMip)
+					{
+						RHIUpdateTexture2D(
+							Slot.Texture2DResource->GetTexture2DRHI(),
+							Slot.MipIndex - CurrentFirstMip,
+							*Slot.Region,
+							Slot.SrcPitch,
+							Slot.SrcData
+							+ Slot.Region->SrcY * Slot.SrcPitch
+							+ Slot.Region->SrcX * Slot.SrcBpp);
+					}
 				}
+		delete RegionData;
 			}
-	delete RegionData;
-		}
-	);
+		);
+	}
 }

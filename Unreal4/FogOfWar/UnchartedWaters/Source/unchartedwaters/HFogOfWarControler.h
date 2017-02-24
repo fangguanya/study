@@ -41,7 +41,7 @@ public:
 	void LoadWorldSettings();
 	// !< 初始化资源
 	void InitTextureResource();
-	// !< 重置资源
+	// !< 释放资源
 	void ResetTextureResource();
 
 protected:
@@ -59,9 +59,9 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FOW")
 		FBox WorldBounds;
 	UPROPERTY(EditAnywhere, Category = "FOW")
-		FVector WorldMin;
+		AActor* WorldMinActor;
 	UPROPERTY(EditAnywhere, Category = "FOW")
-		FVector WorldMax;
+		AActor* WorldMaxActor;
 	// Actor view distances
 	UPROPERTY(EditAnywhere, Category = "FOW")
 		float ActorVisibleUnit;
@@ -85,9 +85,9 @@ protected:
 	UPROPERTY()
 		TArray<uint8> LastDynamicTexturePixels;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FOW")
+	UPROPERTY(Transient, VisibleAnywhere, BlueprintReadOnly, Category = "FOW")
 		UTexture2D* DynamicTexture;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FOW")
+	UPROPERTY(Transient, VisibleAnywhere, BlueprintReadOnly, Category = "FOW")
 		UTexture2D* LastDynamicTexture;
 	
 protected:
@@ -95,4 +95,5 @@ protected:
 	float TexelPerWorldUnit;
 	float WorldUnitPerTexel;
 	AHFogOfWarThread* Worker;
+	FUpdateTextureRegion2D* WholeTextureRegion;
 };
