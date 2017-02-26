@@ -8,7 +8,11 @@ public class unchartedwaters : ModuleRules
 	{
 		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore",
             "RenderCore",
-            "RHI" });
+            "RHI",
+            "UMG",
+            "Slate",
+            "SlateCore"
+        });
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 
